@@ -1,0 +1,9 @@
+apiVersion: aws.k8s.logmein.com/v1alpha1
+kind: EIP
+metadata:
+  name: alfred-test
+spec:
+  tags:
+    owner: Alfred Krohmer
+  assignment:
+    podName: turn-server-default-686d97bf47-hbbc5
