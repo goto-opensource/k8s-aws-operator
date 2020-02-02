@@ -273,7 +273,7 @@ func (r *EIPReconciler) findENI(privateIP string) (string, error) {
 	if resp, err := r.ec2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name: aws.String("private-ip-address"),
+				Name: aws.String("addresses.private-ip-address"),
 				Values: []*string{
 					aws.String(privateIP),
 				},
