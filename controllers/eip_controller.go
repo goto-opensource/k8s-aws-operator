@@ -29,7 +29,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
@@ -38,10 +37,8 @@ import (
 // EIPReconciler reconciles a EIP object
 type EIPReconciler struct {
 	client.Client
-
 	Log logr.Logger
-
-	ec2 *ec2.EC2
+	EC2 *ec2.EC2
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips,verbs=get;list;watch;create;update;patch;delete
@@ -71,7 +68,7 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, r.allocateEIP(ctx, &eip, log)
 		}
 
-		resp, err := r.ec2.DescribeAddressesWithContext(ctx, &ec2.DescribeAddressesInput{
+		resp, err := r.EC2.DescribeAddressesWithContext(ctx, &ec2.DescribeAddressesInput{
 			AllocationIds: []*string{aws.String(status.AllocationId)},
 		})
 		if err != nil {
@@ -176,7 +173,7 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 		input.PublicIpv4Pool = aws.String(eip.Spec.PublicIPv4Pool)
 	}
 
-	if resp, err := r.ec2.AllocateAddressWithContext(ctx, input); err != nil {
+	if resp, err := r.EC2.AllocateAddressWithContext(ctx, input); err != nil {
 		return err
 	} else {
 		eip.Status.State = "allocated"
@@ -212,7 +209,7 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 		}
 	}
 	if len(tagsToCreate) > 0 {
-		if _, err := r.ec2.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
+		if _, err := r.EC2.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
 			Resources: resources,
 			Tags:      tagsToCreate,
 		}); err != nil {
@@ -227,7 +224,7 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 		}
 	}
 	if len(tagsToRemove) > 0 {
-		_, err := r.ec2.DeleteTagsWithContext(ctx, &ec2.DeleteTagsInput{
+		_, err := r.EC2.DeleteTagsWithContext(ctx, &ec2.DeleteTagsInput{
 			Resources: resources,
 			Tags:      tagsToRemove,
 		})
@@ -240,7 +237,7 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 func (r *EIPReconciler) releaseEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
 	log.Info("releasing")
 
-	if _, err := r.ec2.ReleaseAddressWithContext(ctx, &ec2.ReleaseAddressInput{
+	if _, err := r.EC2.ReleaseAddressWithContext(ctx, &ec2.ReleaseAddressInput{
 		AllocationId: aws.String(eip.Status.AllocationId),
 	}); err != nil {
 		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidAllocationID.NotFound" {
@@ -268,7 +265,7 @@ func (r *EIPReconciler) getPodPrivateIP(ctx context.Context, namespace, podName 
 }
 
 func (r *EIPReconciler) findENI(ctx context.Context, privateIP string) (string, error) {
-	if resp, err := r.ec2.DescribeNetworkInterfacesWithContext(ctx, &ec2.DescribeNetworkInterfacesInput{
+	if resp, err := r.EC2.DescribeNetworkInterfacesWithContext(ctx, &ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
 				Name: aws.String("addresses.private-ip-address"),
@@ -349,7 +346,7 @@ func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log
 
 	log.Info("assigning", "podName", eip.Spec.Assignment.PodName, "privateIP", privateIP, "eni", eni)
 
-	resp, err := r.ec2.AssociateAddressWithContext(ctx, &ec2.AssociateAddressInput{
+	resp, err := r.EC2.AssociateAddressWithContext(ctx, &ec2.AssociateAddressInput{
 		AllowReassociation: aws.Bool(eip.Status.State == "reassigning"),
 		AllocationId:       aws.String(eip.Status.AllocationId),
 		NetworkInterfaceId: aws.String(eni),
@@ -375,7 +372,7 @@ func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log
 func (r *EIPReconciler) unassignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
 	log.Info("unassigning")
 
-	_, err := r.ec2.DisassociateAddressWithContext(ctx, &ec2.DisassociateAddressInput{
+	_, err := r.EC2.DisassociateAddressWithContext(ctx, &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(eip.Status.AssociationId),
 	})
 	if err != nil {
@@ -399,10 +396,6 @@ func (r *EIPReconciler) unassignEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 }
 
 func (r *EIPReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	sess := session.Must(session.NewSession())
-
-	r.ec2 = ec2.New(sess)
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&awsv1alpha1.EIP{}).
 		Complete(r)

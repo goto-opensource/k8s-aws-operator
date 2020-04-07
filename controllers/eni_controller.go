@@ -40,7 +40,7 @@ import (
 type ENIReconciler struct {
 	client.Client
 	Log logr.Logger
-	ec2 *ec2.EC2
+	EC2 *ec2.EC2
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis,verbs=get;list;watch;create;update;patch;delete
@@ -75,7 +75,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if eni.Spec.SecondaryPrivateIPAddressCount > 0 {
 				input.SecondaryPrivateIpAddressCount = aws.Int64(eni.Spec.SecondaryPrivateIPAddressCount)
 			}
-			resp, err := r.ec2.CreateNetworkInterface(input)
+			resp, err := r.EC2.CreateNetworkInterface(input)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -92,7 +92,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
-		resp, err := r.ec2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+		resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{aws.String(eni.Status.NetworkInterfaceID)},
 		})
 		if err != nil {
@@ -102,7 +102,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		// reconcile description and security groups
 		if aws.StringValue(eniInfo.Description) != eni.Spec.Description {
-			_, err = r.ec2.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
+			_, err = r.EC2.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
 				NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
 				Description:        &ec2.AttributeValue{Value: aws.String(eni.Spec.Description)},
 			})
@@ -127,7 +127,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 		}
 		if modify {
-			_, err = r.ec2.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
+			_, err = r.EC2.ModifyNetworkInterfaceAttribute(&ec2.ModifyNetworkInterfaceAttributeInput{
 				NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
 				Groups:             securityGroupIDs,
 			})
@@ -141,7 +141,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		desiredNum := 1 + eni.Spec.SecondaryPrivateIPAddressCount
 		if actualNum != desiredNum {
 			if actualNum < desiredNum {
-				_, err = r.ec2.AssignPrivateIpAddresses(&ec2.AssignPrivateIpAddressesInput{
+				_, err = r.EC2.AssignPrivateIpAddresses(&ec2.AssignPrivateIpAddressesInput{
 					NetworkInterfaceId:             aws.String(eni.Status.NetworkInterfaceID),
 					SecondaryPrivateIpAddressCount: aws.Int64(desiredNum - actualNum),
 				})
@@ -150,7 +150,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				for _, address := range eniInfo.PrivateIpAddresses[desiredNum:] {
 					addressesToRemove = append(addressesToRemove, address.PrivateIpAddress)
 				}
-				_, err = r.ec2.UnassignPrivateIpAddresses(&ec2.UnassignPrivateIpAddressesInput{
+				_, err = r.EC2.UnassignPrivateIpAddresses(&ec2.UnassignPrivateIpAddressesInput{
 					NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
 					PrivateIpAddresses: addressesToRemove,
 				})
@@ -203,7 +203,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		eni.Status.Attachment = eni.Spec.Attachment
 		return ctrl.Result{}, r.Update(ctx, &eni)
 	} else if containsString(eni.ObjectMeta.Finalizers, finalizerName) {
-		resp, err := r.ec2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+		resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 			NetworkInterfaceIds: []*string{aws.String(eni.Status.NetworkInterfaceID)},
 		})
 		if err != nil {
@@ -222,7 +222,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				eni.Status.Attachment = nil
 				return ctrl.Result{}, r.Update(ctx, &eni)
 			}
-			_, err = r.ec2.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
+			_, err = r.EC2.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
 				NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
 			})
 			if err != nil {
@@ -288,7 +288,7 @@ func (r *ENIReconciler) getPodPrivateIP(namespace, podName string) (string, erro
 }
 
 func (r *ENIReconciler) findENI(privateIP string) (*ec2.NetworkInterface, error) {
-	if resp, err := r.ec2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+	if resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
 				Name: aws.String("addresses.private-ip-address"),
@@ -326,14 +326,14 @@ func (r *ENIReconciler) getInstanceIDOfPod(namespace, podName string) (string, e
 }
 
 func (r *ENIReconciler) attachENI(attachmentID, instanceID string) error {
-	resp, err := r.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
+	resp, err := r.EC2.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	})
 	if err != nil {
 		return err
 	}
 
-	_, err = r.ec2.AttachNetworkInterface(&ec2.AttachNetworkInterfaceInput{
+	_, err = r.EC2.AttachNetworkInterface(&ec2.AttachNetworkInterfaceInput{
 		NetworkInterfaceId: aws.String(attachmentID),
 		InstanceId:         aws.String(instanceID),
 		DeviceIndex:        aws.Int64(int64(len(resp.Reservations[0].Instances[0].NetworkInterfaces))),
@@ -342,7 +342,7 @@ func (r *ENIReconciler) attachENI(attachmentID, instanceID string) error {
 }
 
 func (r *ENIReconciler) detachENI(attachmentID string) error {
-	_, err := r.ec2.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
+	_, err := r.EC2.DetachNetworkInterface(&ec2.DetachNetworkInterfaceInput{
 		AttachmentId: aws.String(attachmentID),
 	})
 	return err
@@ -350,7 +350,7 @@ func (r *ENIReconciler) detachENI(attachmentID string) error {
 
 func (r *ENIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	sess := session.Must(session.NewSession())
-	r.ec2 = ec2.New(sess)
+	r.EC2 = ec2.New(sess)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&awsv1alpha1.ENI{}).

@@ -4,52 +4,29 @@ Manage AWS Elastic IPs (EIPs) and Elastic Network Interfaces (ENIs) as Custom Re
 
 **Warning:** This project is still work in progress. There might be breaking API changes in the future. Use at your own risk.
 
-## Usage
-
-### EIPs
-
-#### Requirements
+## Requirements
 
 * Your pod IPs must be allocated from your VPC subnets. This is the default setup on AWS EKS by using the [AWS VPC CNI plugin](https://github.com/aws/amazon-vpc-cni-k8s).
 * Your worker nodes must reside in a public subnet with an internet gateway attached.
 
-#### Installation
+## Installation
 
-##### Create an IAM role
+### Create an IAM role
 
-Create an IAM role with the following policy:
+Create an IAM role with the policy [here](iam/policy.json).
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "ec2:AllocateAddress",
-        "ec2:ReleaseAddress",
-        "ec2:DescribeAddresses",
-        "ec2:AssociateAddress",
-        "ec2:DisassociateAddress",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:CreateTags",
-        "ec2:DeleteTags",
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    }
-  ]
-}
-```
+### Install the operator
 
-##### Install the operator
-
-Ensure that the k8s-aws-operator uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests in `deploy/` accordingly, then run:
+Ensure that the k8s-aws-operator uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests [here](deploy) accordingly, then run:
 
 ```bash
 $ kubectl apply -f config/crd/ # install Custom Resource Definition (CRD) for EIP Custom Resource
 $ kubectl apply -f deploy/     # install the operator
 ```
 
+## Usage
+
+### EIPs
 
 #### Basic usage
 

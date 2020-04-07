@@ -16,9 +16,13 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
 	"github.com/logmein/k8s-aws-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
@@ -41,13 +45,40 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
+	var metricsAddr, region, leaderElectionID, leaderElectionNamespace string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&region, "region", "", "AWS region")
+	flag.StringVar(&leaderElectionID, "leader-election-id", "k8s-aws-operator", "the name of the configmap do use as leader election lock")
+	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "", "the namespace in which the leader election lock will be held")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme, MetricsBindAddress: metricsAddr})
+	awsConfig := aws.NewConfig()
+
+	if leaderElectionNamespace == "" {
+		setupLog.Error(errors.New("-leader-election-namespace flag is required"), "command line flag validation failed")
+		os.Exit(1)
+	}
+
+	if region != "" {
+		awsConfig = awsConfig.WithRegion(region)
+	}
+	sess, err := session.NewSession(awsConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to create AWS session")
+		os.Exit(1)
+	}
+
+	ec2 := ec2.New(sess)
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:                  scheme,
+		MetricsBindAddress:      metricsAddr,
+		LeaderElection:          true,
+		LeaderElectionNamespace: leaderElectionNamespace,
+		LeaderElectionID:        leaderElectionID,
+	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -56,6 +87,7 @@ func main() {
 	err = (&controllers.EIPReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("EIP"),
+		EC2:    ec2,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EIP")
@@ -64,6 +96,7 @@ func main() {
 	err = (&controllers.ENIReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("ENI"),
+		EC2:    ec2,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ENI")
