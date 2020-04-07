@@ -22,7 +22,11 @@ import (
 type EIPAssignment struct {
 	// +kubebuilder:validation:MinLength=0
 	// +optional
-	PodName string `json:"podName,omitempty"`
+	PodName                  string `json:"podName,omitempty"`
+	PrivateIPAddress         string `json:"privateIPAddress,omitempty"`
+	ENI                      string `json:"eni,omitempty"`
+	ENIPrivateIPAddressIndex int    `json:"eniPrivateIPAddressIndex,omitempty"`
+
 	//ElasticNetworkInterface EIPElasticNetworkInterfaceAssignment `json:"elasticNetworkInterface,omitempty"`
 	//NetworkLoadBalancer     EIPNetworkLoadBalancerAssignment `json:"networkLoadBalancer,omitempty"`
 }
@@ -69,7 +73,9 @@ type EIPStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 // +kubebuilder:printcolumn:name="Public IP",type=string,JSONPath=`.status.publicIPAddress`
+// +kubebuilder:printcolumn:name="Private IP",type=string,JSONPath=`.status.assignment.privateIPAddress`
 // +kubebuilder:printcolumn:name="Pod",type=string,JSONPath=`.status.assignment.podName`
+// +kubebuilder:printcolumn:name="ENI",type=string,JSONPath=`.status.assignment.eni`
 
 // EIP is the Schema for the eips API
 type EIP struct {

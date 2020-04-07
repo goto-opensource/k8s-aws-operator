@@ -1,17 +1,21 @@
-# k8s-eip-controller
+# k8s-aws-operator
 
-Manage AWS Elastic IPs (EIPs) as Custom Resources in your Kubernetes cluster and assign them your pods.
+Manage AWS Elastic IPs (EIPs) and Elastic Network Interfaces (ENIs) as Custom Resources in your Kubernetes cluster and assign them your pods.
 
 **Warning:** This project is still work in progress. There might be breaking API changes in the future. Use at your own risk.
 
-## Requirements
+## Usage
+
+### EIPs
+
+#### Requirements
 
 * Your pod IPs must be allocated from your VPC subnets. This is the default setup on AWS EKS by using the [AWS VPC CNI plugin](https://github.com/aws/amazon-vpc-cni-k8s).
 * Your worker nodes must reside in a public subnet with an internet gateway attached.
 
-## Installation
+#### Installation
 
-### Create an IAM role
+##### Create an IAM role
 
 Create an IAM role with the following policy:
 
@@ -37,19 +41,19 @@ Create an IAM role with the following policy:
 }
 ```
 
-### Install the controller
+##### Install the operator
 
-Ensure that the k8s-eip-controller uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests in `deploy/` accordingly, then run:
+Ensure that the k8s-aws-operator uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests in `deploy/` accordingly, then run:
 
 ```bash
 $ kubectl apply -f config/crd/ # install Custom Resource Definition (CRD) for EIP Custom Resource
-$ kubectl apply -f deploy/     # install the controller
+$ kubectl apply -f deploy/     # install the operator
 ```
 
 
-## Basic usage
+#### Basic usage
 
-### Allocate an EIP
+##### Allocate an EIP
 
 Create a new file `example.yaml`:
 ```yaml
@@ -75,7 +79,7 @@ NAME     STATE      PUBLIC IP       POD
 my-eip   allocated  34.228.250.93
 ```
 
-#### Using BYOIP and requesting a specific address
+###### Using BYOIP and requesting a specific address
 
 Request a random address from a [BYOIP](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-byoip.html) address pool:
 
@@ -99,7 +103,7 @@ spec:
   # ...
 ```
 
-### Assign the EIP to a pod
+##### Assign the EIP to a pod
 
 Adjust `example.yaml` to include an `assignment` section:
 ```yaml
@@ -129,11 +133,11 @@ my-eip   assigned   34.228.250.93   my-pod
 
 Allocating and assigning can also be done in one step.
 
-### Unassign an EIP from a pod
+##### Unassign an EIP from a pod
 
 Remove the `assignment` section again and reapply the manifest.
 
-### Release the EIP
+##### Release the EIP
 
 ```bash
 $ kubectl delete eip my-eip
@@ -142,9 +146,9 @@ eip.aws.k8s.logmein.com/my-eip deleted
 
 Unassigning and releasing can also be done in one step.
 
-## One EIP per pod in a deployment / statefulset
+#### One EIP per pod in a deployment / statefulset
 
-### EIP creation
+##### EIP creation
 
 You can use an `initContainer` as part of your pod definition to create the `EIP` custom resource. This requires that your pod has RBAC permissions to create `EIP` resources.
 
@@ -226,7 +230,7 @@ spec:
             done
 ```
 
-### Cleanup
+##### Cleanup
 
 You can ensure that an EIP is released when your pod is terminated by including `ownerReferences` in your `EIP` resource. Setting `blockOwnerDeletion: true` prevents the pod from vanishing until the EIP is unassigned and released.
 
@@ -247,3 +251,7 @@ spec:
   assignment:
     podName: some-pod
 ```
+
+### ENIs
+
+To be documented

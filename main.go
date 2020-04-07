@@ -19,8 +19,8 @@ import (
 	"flag"
 	"os"
 
-	awsv1alpha1 "github.com/logmein/k8s-eip-controller/api/v1alpha1"
-	"github.com/logmein/k8s-eip-controller/controllers"
+	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
+	"github.com/logmein/k8s-aws-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -59,6 +59,14 @@ func main() {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EIP")
+		os.Exit(1)
+	}
+	err = (&controllers.ENIReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ENI"),
+	}).SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ENI")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

@@ -18,23 +18,21 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
-	awsv1alpha1 "github.com/logmein/k8s-eip-controller/api/v1alpha1"
-)
-
-const (
-	finalizerName = "eip-release.aws.k8s.logmein.com"
+	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
 )
 
 // EIPReconciler reconciles a EIP object
@@ -66,14 +64,14 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			// add finalizer, set initial state
 			eip.ObjectMeta.Finalizers = append(eip.ObjectMeta.Finalizers, finalizerName)
 			status.State = "allocating"
-			return ctrl.Result{}, r.Update(context.Background(), &eip)
+			return ctrl.Result{}, r.Update(ctx, &eip)
 		}
 
 		if status.State == "allocating" {
-			return ctrl.Result{}, r.allocateEIP(&eip, log)
+			return ctrl.Result{}, r.allocateEIP(ctx, &eip, log)
 		}
 
-		resp, err := r.ec2.DescribeAddresses(&ec2.DescribeAddressesInput{
+		resp, err := r.ec2.DescribeAddressesWithContext(ctx, &ec2.DescribeAddressesInput{
 			AllocationIds: []*string{aws.String(status.AllocationId)},
 		})
 		if err != nil {
@@ -85,15 +83,15 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		addr := resp.Addresses[0]
 
-		if err := r.reconcileTags(&eip, addr.Tags); err != nil {
+		if err := r.reconcileTags(ctx, &eip, addr.Tags); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		if status.State == "allocated" {
 			if spec.Assignment != nil {
-				if spec.Assignment.PodName != "" {
+				if spec.Assignment.PodName != "" || spec.Assignment.ENI != "" || spec.Assignment.PrivateIPAddress != "" {
 					status.State = "assigning"
-					return ctrl.Result{}, r.Update(context.Background(), &eip)
+					return ctrl.Result{}, r.Update(ctx, &eip)
 				}
 			}
 		}
@@ -111,7 +109,7 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 
 			if changed {
-				return ctrl.Result{}, r.Update(context.Background(), &eip)
+				return ctrl.Result{}, r.Update(ctx, &eip)
 			}
 		}
 
@@ -119,54 +117,54 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if spec.Assignment == nil {
 				// assignment was removed before EIP was actually assigned
 				status.State = "allocated"
-				return ctrl.Result{}, r.Update(context.Background(), &eip)
+				return ctrl.Result{}, r.Update(ctx, &eip)
 			}
 		}
 
 		if status.State == "assigning" || status.State == "reassigning" {
 			if spec.Assignment != nil {
-				if spec.Assignment.PodName != "" {
-					return ctrl.Result{}, r.assignEIPToPod(&eip, log)
+				if spec.Assignment.PodName != "" || spec.Assignment.ENI != "" || spec.Assignment.PrivateIPAddress != "" {
+					return ctrl.Result{}, r.assignEIP(ctx, &eip, log)
 				}
 			}
 		}
 
 		if status.State == "unassigning" {
-			return ctrl.Result{}, r.unassignEIP(&eip, log)
+			return ctrl.Result{}, r.unassignEIP(ctx, &eip, log)
 		}
 	} else {
 		// EIP object is being deleted
 		if containsString(eip.ObjectMeta.Finalizers, finalizerName) {
 			if status.State == "assigned" || status.State == "reassigning" {
 				status.State = "unassigning"
-				return ctrl.Result{}, r.Update(context.Background(), &eip)
+				return ctrl.Result{}, r.Update(ctx, &eip)
 			}
 
 			if status.State == "unassigning" {
-				return ctrl.Result{}, r.unassignEIP(&eip, log)
+				return ctrl.Result{}, r.unassignEIP(ctx, &eip, log)
 			}
 
 			if status.State == "allocated" {
 				status.State = "releasing"
-				return ctrl.Result{}, r.Update(context.Background(), &eip)
+				return ctrl.Result{}, r.Update(ctx, &eip)
 			}
 
 			if status.State == "releasing" {
-				if err := r.releaseEIP(&eip, log); err != nil {
+				if err := r.releaseEIP(ctx, &eip, log); err != nil {
 					return ctrl.Result{}, err
 				}
 			}
 
 			// remove finalizer, allow k8s to remove the resource
 			eip.ObjectMeta.Finalizers = removeString(eip.ObjectMeta.Finalizers, finalizerName)
-			return ctrl.Result{}, r.Update(context.Background(), &eip)
+			return ctrl.Result{}, r.Update(ctx, &eip)
 		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *EIPReconciler) allocateEIP(eip *awsv1alpha1.EIP, log logr.Logger) error {
+func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
 	log.Info("allocating")
 
 	input := &ec2.AllocateAddressInput{
@@ -178,22 +176,22 @@ func (r *EIPReconciler) allocateEIP(eip *awsv1alpha1.EIP, log logr.Logger) error
 		input.PublicIpv4Pool = aws.String(eip.Spec.PublicIPv4Pool)
 	}
 
-	if resp, err := r.ec2.AllocateAddress(input); err != nil {
+	if resp, err := r.ec2.AllocateAddressWithContext(ctx, input); err != nil {
 		return err
 	} else {
 		eip.Status.State = "allocated"
 		eip.Status.AllocationId = aws.StringValue(resp.AllocationId)
 		eip.Status.PublicIPAddress = aws.StringValue(resp.PublicIp)
 		r.Log.Info("allocated", "allocationId", eip.Status.AllocationId)
-		if err := r.Update(context.Background(), eip); err != nil {
+		if err := r.Update(ctx, eip); err != nil {
 			return err
 		}
 	}
 
-	return r.reconcileTags(eip, []*ec2.Tag{})
+	return r.reconcileTags(ctx, eip, []*ec2.Tag{})
 }
 
-func (r *EIPReconciler) reconcileTags(eip *awsv1alpha1.EIP, existingTags []*ec2.Tag) error {
+func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP, existingTags []*ec2.Tag) error {
 	if eip.Spec.Tags == nil {
 		return nil
 	}
@@ -214,7 +212,7 @@ func (r *EIPReconciler) reconcileTags(eip *awsv1alpha1.EIP, existingTags []*ec2.
 		}
 	}
 	if len(tagsToCreate) > 0 {
-		if _, err := r.ec2.CreateTags(&ec2.CreateTagsInput{
+		if _, err := r.ec2.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
 			Resources: resources,
 			Tags:      tagsToCreate,
 		}); err != nil {
@@ -229,7 +227,7 @@ func (r *EIPReconciler) reconcileTags(eip *awsv1alpha1.EIP, existingTags []*ec2.
 		}
 	}
 	if len(tagsToRemove) > 0 {
-		_, err := r.ec2.DeleteTags(&ec2.DeleteTagsInput{
+		_, err := r.ec2.DeleteTagsWithContext(ctx, &ec2.DeleteTagsInput{
 			Resources: resources,
 			Tags:      tagsToRemove,
 		})
@@ -239,10 +237,10 @@ func (r *EIPReconciler) reconcileTags(eip *awsv1alpha1.EIP, existingTags []*ec2.
 	return nil
 }
 
-func (r *EIPReconciler) releaseEIP(eip *awsv1alpha1.EIP, log logr.Logger) error {
+func (r *EIPReconciler) releaseEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
 	log.Info("releasing")
 
-	if _, err := r.ec2.ReleaseAddress(&ec2.ReleaseAddressInput{
+	if _, err := r.ec2.ReleaseAddressWithContext(ctx, &ec2.ReleaseAddressInput{
 		AllocationId: aws.String(eip.Status.AllocationId),
 	}); err != nil {
 		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidAllocationID.NotFound" {
@@ -257,9 +255,9 @@ func (r *EIPReconciler) releaseEIP(eip *awsv1alpha1.EIP, log logr.Logger) error 
 	return nil
 }
 
-func (r *EIPReconciler) getPodPrivateIP(namespace, podName string) (string, error) {
+func (r *EIPReconciler) getPodPrivateIP(ctx context.Context, namespace, podName string) (string, error) {
 	pod := &corev1.Pod{}
-	if err := r.Client.Get(context.Background(), client.ObjectKey{
+	if err := r.Client.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
 		Name:      podName,
 	}, pod); err != nil {
@@ -269,8 +267,8 @@ func (r *EIPReconciler) getPodPrivateIP(namespace, podName string) (string, erro
 	return pod.Status.PodIP, nil
 }
 
-func (r *EIPReconciler) findENI(privateIP string) (string, error) {
-	if resp, err := r.ec2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+func (r *EIPReconciler) findENI(ctx context.Context, privateIP string) (string, error) {
+	if resp, err := r.ec2.DescribeNetworkInterfacesWithContext(ctx, &ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
 				Name: aws.String("addresses.private-ip-address"),
@@ -290,24 +288,68 @@ func (r *EIPReconciler) findENI(privateIP string) (string, error) {
 	}
 }
 
-func (r *EIPReconciler) assignEIPToPod(eip *awsv1alpha1.EIP, log logr.Logger) error {
-	privateIP, err := r.getPodPrivateIP(eip.Namespace, eip.Spec.Assignment.PodName)
-	if err != nil {
-		return err
+func (r *EIPReconciler) getAssignmentTarget(ctx context.Context, eip *awsv1alpha1.EIP) (string, string, error) {
+	modes := 0
+	if eip.Spec.Assignment.PodName != "" {
+		modes++
+	}
+	if eip.Spec.Assignment.ENI != "" {
+		modes++
+	}
+	if eip.Spec.Assignment.PrivateIPAddress != "" {
+		modes++
+	}
+	if modes != 1 {
+		return "", "", fmt.Errorf("exactly one of podName, eni or privateIPAddress needs to be given in assignment")
 	}
 
+	if eip.Spec.Assignment.ENI != "" {
+		var eni awsv1alpha1.ENI
+		if err := r.Get(ctx, types.NamespacedName{
+			Namespace: eip.Namespace,
+			Name:      eip.Spec.Assignment.ENI,
+		}, &eni); err != nil {
+			return "", "", err
+		}
+
+		index := eip.Spec.Assignment.ENIPrivateIPAddressIndex
+		if index >= len(eni.Status.PrivateIPAddresses) {
+			return "", "", fmt.Errorf("eniPrivateIPAddressIndex %d is out of range (ENI has %d addresses)", index, len(eni.Status.PrivateIPAddresses))
+		}
+		return eni.Status.NetworkInterfaceID, eni.Status.PrivateIPAddresses[index], nil
+	}
+
+	privateIP := eip.Spec.Assignment.PrivateIPAddress
 	if privateIP == "" {
-		return errors.New("Pod has no IP")
+		ip, err := r.getPodPrivateIP(ctx, eip.Namespace, eip.Spec.Assignment.PodName)
+		if err != nil {
+			return "", "", err
+		}
+
+		if ip == "" {
+			return "", "", errors.New("Pod has no IP")
+		}
+
+		privateIP = ip
 	}
 
-	eni, err := r.findENI(privateIP)
+	eni, err := r.findENI(ctx, privateIP)
+	if err != nil {
+		return "", "", err
+	}
+
+	return eni, privateIP, nil
+}
+
+func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
+	eni, privateIP, err := r.getAssignmentTarget(ctx, eip)
 	if err != nil {
 		return err
 	}
 
 	log.Info("assigning", "podName", eip.Spec.Assignment.PodName, "privateIP", privateIP, "eni", eni)
 
-	resp, err := r.ec2.AssociateAddress(&ec2.AssociateAddressInput{
+	resp, err := r.ec2.AssociateAddressWithContext(ctx, &ec2.AssociateAddressInput{
 		AllowReassociation: aws.Bool(eip.Status.State == "reassigning"),
 		AllocationId:       aws.String(eip.Status.AllocationId),
 		NetworkInterfaceId: aws.String(eni),
@@ -322,27 +364,34 @@ func (r *EIPReconciler) assignEIPToPod(eip *awsv1alpha1.EIP, log logr.Logger) er
 	eip.Status.State = "assigned"
 	eip.Status.AssociationId = aws.StringValue(resp.AssociationId)
 	eip.Status.Assignment = eip.Spec.Assignment
-	if err := r.Update(context.Background(), eip); err != nil {
+	eip.Status.Assignment.PrivateIPAddress = privateIP
+	if err := r.Update(ctx, eip); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *EIPReconciler) unassignEIP(eip *awsv1alpha1.EIP, log logr.Logger) error {
+func (r *EIPReconciler) unassignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
 	log.Info("unassigning")
 
-	if _, err := r.ec2.DisassociateAddress(&ec2.DisassociateAddressInput{
+	_, err := r.ec2.DisassociateAddressWithContext(ctx, &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(eip.Status.AssociationId),
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && (awsErr.Code() == "InvalidAssociationID.NotFound" || awsErr.Code() == "InvalidNetworkInterfaceID.NotFound") {
+			log.Info("association ID or network interface ID not found; assuming EIP already disassociated", "associationnId", eip.Status.AssociationId)
+		} else {
+			log.Info(awsErr.Code())
+			return err
+		}
 	}
 
 	log.Info("unassigned")
 
 	eip.Status.State = "allocated"
 	eip.Status.Assignment = nil
-	if err := r.Update(context.Background(), eip); err != nil {
+	if err := r.Update(ctx, eip); err != nil {
 		return err
 	}
 
@@ -357,23 +406,4 @@ func (r *EIPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&awsv1alpha1.EIP{}).
 		Complete(r)
-}
-
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }

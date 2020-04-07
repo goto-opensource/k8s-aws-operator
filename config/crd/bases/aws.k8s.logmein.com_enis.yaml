@@ -4,33 +4,24 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: eips.aws.k8s.logmein.com
+  name: enis.aws.k8s.logmein.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.state
-    name: State
-    type: string
-  - JSONPath: .status.publicIPAddress
-    name: Public IP
-    type: string
-  - JSONPath: .status.assignment.privateIPAddress
-    name: Private IP
-    type: string
-  - JSONPath: .status.assignment.podName
+  - JSONPath: .status.attachment.podName
     name: Pod
     type: string
-  - JSONPath: .status.assignment.eni
-    name: ENI
+  - JSONPath: .status.privateIPAddresses
+    name: Private IP addresses
     type: string
   group: aws.k8s.logmein.com
   names:
-    kind: EIP
-    plural: eips
+    kind: ENI
+    plural: enis
   scope: ""
   subresources: {}
   validation:
     openAPIV3Schema:
-      description: EIP is the Schema for the eips API
+      description: ENI is the Schema for the enis API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -402,60 +393,43 @@ spec:
           type: object
         spec:
           properties:
-            assignment:
-              description: "Which resource this EIP should be assigned to. \n If not
-                given, it will not be assigned to anything."
+            attachment:
               properties:
-                eni:
-                  type: string
-                eniPrivateIPAddressIndex:
-                  type: integer
                 podName:
                   minLength: 0
                   type: string
-                privateIPAddress:
-                  type: string
               type: object
-            publicIPAddress:
+            description:
               type: string
-            publicIPv4Pool:
-              type: string
-            tags:
-              additionalProperties:
+            secondaryPrivateIPAddressCount:
+              format: int64
+              type: integer
+            securityGroups:
+              items:
                 type: string
-              description: Tags that will be applied to the created EIP.
-              type: object
+              type: array
+            subnetID:
+              type: string
+          required:
+          - subnetID
+          - securityGroups
           type: object
         status:
           properties:
-            allocationId:
-              type: string
-            assignment:
+            attachment:
               properties:
-                eni:
-                  type: string
-                eniPrivateIPAddressIndex:
-                  type: integer
                 podName:
                   minLength: 0
                   type: string
-                privateIPAddress:
-                  type: string
               type: object
-            associationId:
+            networkInterfaceID:
               type: string
-            publicIPAddress:
-              type: string
-            state:
-              description: "Current state of the EIP object. \n State transfer diagram:
-                \n                   /------- unassigning <----\\--------------\\
-                \                  |                         |              |  *start*:
-                \        V                         |              | allocating ->
-                allocated <-> assigning -> assigned <-> reassigning                   |
-                \            |   *end*:          |             |  releasing <------/-------------/"
-              type: string
+            privateIPAddresses:
+              items:
+                type: string
+              type: array
           required:
-          - state
+          - networkInterfaceID
           type: object
       type: object
   versions:

@@ -11,13 +11,13 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag logmein/k8s-eip-controller:latest
+      run: docker build . --file Dockerfile --tag logmein/k8s-aws-operator:latest
 
     - name: Login to DockerHub Registry
       run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
 
     - name: Publish the Docker Image
-      run: docker push logmein/k8s-eip-controller:latest
+      run: docker push logmein/k8s-aws-operator:latest
 
     - name: Logot of the DockerHub Registry
       run: docker logout

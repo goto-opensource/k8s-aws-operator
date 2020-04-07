@@ -1,0 +1,10 @@
+apiVersion: aws.k8s.logmein.com/v1alpha1
+kind: ENI
+metadata:
+  name: eni-sample
+spec:
+  description: VCS Test eni
+  subnetID: subnet-123456789
+  secondaryPrivateIPAddressCount: 2
+  securityGroups:
+  - sg-abcdef12

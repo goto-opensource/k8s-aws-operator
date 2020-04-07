@@ -26,3 +26,23 @@ rules:
   - get
   - update
   - patch
+- apiGroups:
+  - aws.k8s.logmein.com
+  resources:
+  - enis
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - aws.k8s.logmein.com
+  resources:
+  - enis/status
+  verbs:
+  - get
+  - update
+  - patch

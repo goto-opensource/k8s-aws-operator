@@ -1,4 +1,4 @@
-module github.com/logmein/k8s-eip-controller
+module github.com/logmein/k8s-aws-operator
 
 go 1.12
 
