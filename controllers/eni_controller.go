@@ -30,7 +30,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
@@ -349,9 +348,6 @@ func (r *ENIReconciler) detachENI(attachmentID string) error {
 }
 
 func (r *ENIReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	sess := session.Must(session.NewSession())
-	r.EC2 = ec2.New(sess)
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&awsv1alpha1.ENI{}).
 		Complete(r)
