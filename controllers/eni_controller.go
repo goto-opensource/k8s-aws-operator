@@ -202,31 +202,33 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		eni.Status.Attachment = eni.Spec.Attachment
 		return ctrl.Result{}, r.Update(ctx, &eni)
 	} else if containsString(eni.ObjectMeta.Finalizers, finalizerName) {
-		resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
-			NetworkInterfaceIds: []*string{aws.String(eni.Status.NetworkInterfaceID)},
-		})
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() != "InvalidNetworkInterfaceID.NotFound" {
-				return ctrl.Result{}, err
-			}
-		} else {
-			eniInfo := resp.NetworkInterfaces[0]
-			if eniInfo.Attachment != nil && aws.StringValue(eniInfo.Attachment.Status) == "attached" {
-				err := r.detachENI(aws.StringValue(eniInfo.Attachment.AttachmentId))
-				if err != nil {
-					if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() != "InvalidAttachmentID.NotFound" {
-						return ctrl.Result{}, err
-					}
-				}
-				eni.Status.Attachment = nil
-				return ctrl.Result{}, r.Update(ctx, &eni)
-			}
-			_, err = r.EC2.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
-				NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
+		if eni.Status.NetworkInterfaceID != "" {
+			resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
+				NetworkInterfaceIds: []*string{aws.String(eni.Status.NetworkInterfaceID)},
 			})
 			if err != nil {
 				if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() != "InvalidNetworkInterfaceID.NotFound" {
 					return ctrl.Result{}, err
+				}
+			} else {
+				eniInfo := resp.NetworkInterfaces[0]
+				if eniInfo.Attachment != nil && aws.StringValue(eniInfo.Attachment.Status) == "attached" {
+					err := r.detachENI(aws.StringValue(eniInfo.Attachment.AttachmentId))
+					if err != nil {
+						if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() != "InvalidAttachmentID.NotFound" {
+							return ctrl.Result{}, err
+						}
+					}
+					eni.Status.Attachment = nil
+					return ctrl.Result{}, r.Update(ctx, &eni)
+				}
+				_, err = r.EC2.DeleteNetworkInterface(&ec2.DeleteNetworkInterfaceInput{
+					NetworkInterfaceId: aws.String(eni.Status.NetworkInterfaceID),
+				})
+				if err != nil {
+					if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() != "InvalidNetworkInterfaceID.NotFound" {
+						return ctrl.Result{}, err
+					}
 				}
 			}
 		}
