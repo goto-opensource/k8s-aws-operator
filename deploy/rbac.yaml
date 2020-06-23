@@ -9,7 +9,7 @@ metadata:
   #  eks.amazonaws.com/role-arn: arn:aws:iam::1234567890:role/k8s-aws-operator
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: k8s-aws-operator
@@ -23,7 +23,7 @@ rules:
   resources: ["eips", "enis"]
   verbs: ["*"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: k8s-aws-operator
@@ -40,7 +40,7 @@ subjects:
 
 # for leader election:
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: k8s-aws-operator
@@ -56,7 +56,7 @@ rules:
   resourceNames: ["k8s-aws-operator"]
   verbs: ["delete","get","update"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: k8s-aws-operator
