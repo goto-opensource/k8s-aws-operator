@@ -1,0 +1,23 @@
+name: Build Container
+on: 
+  push:
+    branches:
+    - master
+jobs:
+  build:
+    name: Docker Build and Publish
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Docker build and publish
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        repository: logmein/k8s-aws-operator
+        tag_with_ref: true
+        tag_with_sha: false
+        push: true
+
