@@ -42,6 +42,7 @@ type ENISpec struct {
 // ENIStatus defines the observed state of ENI
 type ENIStatus struct {
 	NetworkInterfaceID string `json:"networkInterfaceID"`
+	MacAddress         string `json:"macAddress"`
 
 	// +optional
 	PrivateIPAddresses []string       `json:"privateIPAddresses,omitempty"`

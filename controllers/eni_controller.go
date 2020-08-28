@@ -79,6 +79,7 @@ func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				return ctrl.Result{}, err
 			}
 			eni.Status.NetworkInterfaceID = aws.StringValue(resp.NetworkInterface.NetworkInterfaceId)
+			eni.Status.MacAddress = aws.StringValue(resp.NetworkInterface.MacAddress)
 			eni.Status.PrivateIPAddresses = r.getPrivateIPAddresses(resp.NetworkInterface.PrivateIpAddresses)
 			if err := r.Update(ctx, &eni); err != nil {
 				return ctrl.Result{}, err
