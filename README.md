@@ -20,8 +20,8 @@ Create an IAM role with the policy [here](iam/policy.json).
 Ensure that the k8s-aws-operator uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests [here](deploy) accordingly, then run:
 
 ```bash
-$ kubectl apply -f config/crd/ # install Custom Resource Definition (CRD) for EIP Custom Resource
-$ kubectl apply -f deploy/     # install the operator
+$ kubectl apply -f config/crd/bases/ # install Custom Resource Definition (CRD) for EIP Custom Resource
+$ kubectl apply -f deploy/          # install the operator
 ```
 
 ## Usage
