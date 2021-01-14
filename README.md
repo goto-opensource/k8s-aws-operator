@@ -7,7 +7,7 @@ Manage AWS Elastic IPs (EIPs) and Elastic Network Interfaces (ENIs) as Custom Re
 ## Requirements
 
 * Your pod IPs must be allocated from your VPC subnets. This is the default setup on AWS EKS by using the [AWS VPC CNI plugin](https://github.com/aws/amazon-vpc-cni-k8s).
-* If you wish egress traffic to be sourced from assigned EIPs: In AWS VPC CNI plugin, `AWS_VPC_K8S_CNI_EXTERNALSNAT` must be set to `true` or `AWS_VPC_K8S_CNI_EXCLUDE_SNAT_CIDRS` must include the public IP ranges to be assigned.
+* If you wish egress traffic to be sourced from assigned EIPs: In AWS VPC CNI plugin, `AWS_VPC_K8S_CNI_EXTERNALSNAT` must be set to `true` or `AWS_VPC_K8S_CNI_EXCLUDE_SNAT_CIDRS` must include the destination CIDR's.
 * Your worker nodes must reside in a public subnet with an internet gateway attached.
 
 ## Installation
