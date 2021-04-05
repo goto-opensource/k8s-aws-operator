@@ -17,6 +17,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type EIPAssignment struct {
@@ -68,6 +69,7 @@ type EIPStatus struct {
 
 	AssociationId string         `json:"associationId,omitempty"`
 	Assignment    *EIPAssignment `json:"assignment,omitempty"`
+	PodUID        types.UID      `json:"podUUID,omitempty"`
 }
 
 // +kubebuilder:object:root=true

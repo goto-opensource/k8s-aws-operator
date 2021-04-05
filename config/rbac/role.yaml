@@ -11,38 +11,58 @@ rules:
   resources:
   - eips
   verbs:
+  - create
+  - delete
   - get
   - list
-  - watch
-  - create
-  - update
   - patch
-  - delete
+  - update
+  - watch
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
   - eips/status
   verbs:
   - get
-  - update
   - patch
+  - update
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
   - enis
   verbs:
+  - create
+  - delete
   - get
   - list
-  - watch
-  - create
-  - update
   - patch
-  - delete
+  - update
+  - watch
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
   - enis/status
   verbs:
   - get
-  - update
   - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - patch
+  - update

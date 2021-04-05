@@ -23,13 +23,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
-	"github.com/logmein/k8s-aws-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
+	"github.com/logmein/k8s-aws-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -41,6 +42,7 @@ var (
 func init() {
 	corev1.AddToScheme(scheme)
 	awsv1alpha1.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -100,6 +102,14 @@ func main() {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ENI")
+		os.Exit(1)
+	}
+	if err = (&controllers.PodReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Pod"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

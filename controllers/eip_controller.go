@@ -95,14 +95,26 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 		if status.State == "assigned" {
 			changed := false
-			if spec.Assignment == nil {
+			switch {
+			case spec.Assignment == nil:
 				// assignment was removed
 				status.State = "unassigning"
 				changed = true
-			} else if *(spec.Assignment) != *(status.Assignment) || addr.AssociationId == nil {
+			case *(spec.Assignment) != *(status.Assignment) || addr.AssociationId == nil:
 				// assignment was changed (in spec or in EC2)
 				status.State = "reassigning"
 				changed = true
+			case status.Assignment.PodName != "":
+				privateIP, podUID, err := r.getPodInfo(ctx, eip.Namespace, spec.Assignment.PodName)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				if status.Assignment.PrivateIPAddress != privateIP || status.PodUID != podUID {
+					// pod was replaced
+					// (even if only the pod UID has changed, we can't be sure if the private IP is still attached to the same ENI)
+					status.State = "reassigning"
+					changed = true
+				}
 			}
 
 			if changed {
@@ -252,16 +264,16 @@ func (r *EIPReconciler) releaseEIP(ctx context.Context, eip *awsv1alpha1.EIP, lo
 	return nil
 }
 
-func (r *EIPReconciler) getPodPrivateIP(ctx context.Context, namespace, podName string) (string, error) {
+func (r *EIPReconciler) getPodInfo(ctx context.Context, namespace, podName string) (string, types.UID, error) {
 	pod := &corev1.Pod{}
 	if err := r.Client.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
 		Name:      podName,
 	}, pod); err != nil {
-		return "", err
+		return "", types.UID(""), err
 	}
 
-	return pod.Status.PodIP, nil
+	return pod.Status.PodIP, pod.UID, nil
 }
 
 func (r *EIPReconciler) findENI(ctx context.Context, privateIP string) (string, error) {
@@ -285,7 +297,7 @@ func (r *EIPReconciler) findENI(ctx context.Context, privateIP string) (string, 
 	}
 }
 
-func (r *EIPReconciler) getAssignmentTarget(ctx context.Context, eip *awsv1alpha1.EIP) (string, string, error) {
+func (r *EIPReconciler) getAssignmentTarget(ctx context.Context, eip *awsv1alpha1.EIP) (string, string, types.UID, error) {
 	modes := 0
 	if eip.Spec.Assignment.PodName != "" {
 		modes++
@@ -297,7 +309,7 @@ func (r *EIPReconciler) getAssignmentTarget(ctx context.Context, eip *awsv1alpha
 		modes++
 	}
 	if modes != 1 {
-		return "", "", fmt.Errorf("exactly one of podName, eni or privateIPAddress needs to be given in assignment")
+		return "", "", types.UID(""), fmt.Errorf("exactly one of podName, eni or privateIPAddress needs to be given in assignment")
 	}
 
 	if eip.Spec.Assignment.ENI != "" {
@@ -306,40 +318,42 @@ func (r *EIPReconciler) getAssignmentTarget(ctx context.Context, eip *awsv1alpha
 			Namespace: eip.Namespace,
 			Name:      eip.Spec.Assignment.ENI,
 		}, &eni); err != nil {
-			return "", "", err
+			return "", "", types.UID(""), err
 		}
 
 		index := eip.Spec.Assignment.ENIPrivateIPAddressIndex
 		if index >= len(eni.Status.PrivateIPAddresses) {
-			return "", "", fmt.Errorf("eniPrivateIPAddressIndex %d is out of range (ENI has %d addresses)", index, len(eni.Status.PrivateIPAddresses))
+			return "", "", types.UID(""), fmt.Errorf("eniPrivateIPAddressIndex %d is out of range (ENI has %d addresses)", index, len(eni.Status.PrivateIPAddresses))
 		}
-		return eni.Status.NetworkInterfaceID, eni.Status.PrivateIPAddresses[index], nil
+		return eni.Status.NetworkInterfaceID, eni.Status.PrivateIPAddresses[index], "", nil
 	}
 
 	privateIP := eip.Spec.Assignment.PrivateIPAddress
+	podUID := types.UID("")
 	if privateIP == "" {
-		ip, err := r.getPodPrivateIP(ctx, eip.Namespace, eip.Spec.Assignment.PodName)
+		ip, uid, err := r.getPodInfo(ctx, eip.Namespace, eip.Spec.Assignment.PodName)
 		if err != nil {
-			return "", "", err
+			return "", "", types.UID(""), err
 		}
 
 		if ip == "" {
-			return "", "", errors.New("Pod has no IP")
+			return "", "", types.UID(""), errors.New("Pod has no IP")
 		}
 
 		privateIP = ip
+		podUID = uid
 	}
 
 	eni, err := r.findENI(ctx, privateIP)
 	if err != nil {
-		return "", "", err
+		return "", "", types.UID(""), err
 	}
 
-	return eni, privateIP, nil
+	return eni, privateIP, podUID, nil
 }
 
 func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log logr.Logger) error {
-	eni, privateIP, err := r.getAssignmentTarget(ctx, eip)
+	eni, privateIP, podUID, err := r.getAssignmentTarget(ctx, eip)
 	if err != nil {
 		return err
 	}
@@ -362,6 +376,7 @@ func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log
 	eip.Status.AssociationId = aws.StringValue(resp.AssociationId)
 	eip.Status.Assignment = eip.Spec.Assignment
 	eip.Status.Assignment.PrivateIPAddress = privateIP
+	eip.Status.PodUID = podUID
 	if err := r.Update(ctx, eip); err != nil {
 		return err
 	}
