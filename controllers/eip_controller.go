@@ -171,6 +171,23 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 		input.Address = aws.String(eip.Spec.PublicIPAddress)
 	} else if eip.Spec.PublicIPv4Pool != "" {
 		input.PublicIpv4Pool = aws.String(eip.Spec.PublicIPv4Pool)
+	} else if len(eip.Spec.PublicIPv4Pools) > 0 {
+		if resp, err := r.EC2.DescribePublicIpv4PoolsWithContext(ctx, &ec2.DescribePublicIpv4PoolsInput{
+			PoolIds: aws.StringSlice(eip.Spec.PublicIPv4Pools),
+		}); err != nil {
+			return err
+		} else {
+			var chosenPool *ec2.PublicIpv4Pool
+			for _, pool := range resp.PublicIpv4Pools {
+				if chosenPool == nil || *pool.TotalAvailableAddressCount > *chosenPool.TotalAvailableAddressCount {
+					chosenPool = pool
+				}
+			}
+			if chosenPool == nil {
+				return fmt.Errorf("no public IPv4 pool found")
+			}
+			input.PublicIpv4Pool = chosenPool.PoolId
+		}
 	}
 
 	if resp, err := r.EC2.AllocateAddressWithContext(ctx, input); err != nil {

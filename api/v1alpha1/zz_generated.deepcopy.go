@@ -113,6 +113,11 @@ func (in *EIPSpec) DeepCopyInto(out *EIPSpec) {
 		*out = new(EIPAssignment)
 		**out = **in
 	}
+	if in.PublicIPv4Pools != nil {
+		in, out := &in.PublicIPv4Pools, &out.PublicIPv4Pools
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Tags != nil {
 		in, out := &in.Tags, &out.Tags
 		*out = new(map[string]string)

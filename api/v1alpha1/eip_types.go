@@ -40,8 +40,9 @@ type EIPSpec struct {
 	// +optional
 	Assignment *EIPAssignment `json:"assignment,omitempty"`
 
-	PublicIPv4Pool  string `json:"publicIPv4Pool,omitempty"`
-	PublicIPAddress string `json:"publicIPAddress,omitempty"`
+	PublicIPv4Pool  string   `json:"publicIPv4Pool,omitempty"`
+	PublicIPv4Pools []string `json:"publicIPv4Pools,omitempty"`
+	PublicIPAddress string   `json:"publicIPAddress,omitempty"`
 
 	// Tags that will be applied to the created EIP.
 	// +optional
