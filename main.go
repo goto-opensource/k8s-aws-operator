@@ -50,9 +50,13 @@ func main() {
 	flag.StringVar(&region, "region", "", "AWS region")
 	flag.StringVar(&leaderElectionID, "leader-election-id", "k8s-aws-operator", "the name of the configmap do use as leader election lock")
 	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "", "the namespace in which the leader election lock will be held")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.Logger(true))
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	awsConfig := aws.NewConfig()
 

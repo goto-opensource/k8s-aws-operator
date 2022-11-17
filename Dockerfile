@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.14.4 as builder
+FROM golang:1.18 as builder
 
 WORKDIR /workspace
 # Copy the go source

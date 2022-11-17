@@ -44,8 +44,7 @@ type EIPReconciler struct {
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips/status,verbs=get;update;patch
 
-func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *EIPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("eip", req.NamespacedName)
 
 	var eip awsv1alpha1.EIP
