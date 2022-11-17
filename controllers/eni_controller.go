@@ -45,8 +45,7 @@ type ENIReconciler struct {
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis/status,verbs=get;update;patch
 
-func (r *ENIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	//log := r.Log.WithValues("eni", req.NamespacedName)
 
 	var eni awsv1alpha1.ENI

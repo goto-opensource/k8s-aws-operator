@@ -1,3 +1,20 @@
-version: "2"
-domain: k8s.logmein.com
+version: "3"
+projectName: k8s-aws-operator
+domain: logmein.com
 repo: github.com/logmein/k8s-aws-operator
+layout:
+- go.kubebuilder.io/v3
+resources:
+- api:
+    namespaced: true
+  domain: logmein.com
+  group: k8s
+  kind: EIP
+- api:
+    crdVersion: v1alpha1
+    namespaced: true
+  domain: logmein.com
+  group: k8s
+  kind: ENI
+  controller: true
+  path: k8s-aws-operator/api/v1alpha1
