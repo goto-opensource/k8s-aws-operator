@@ -1,0 +1,11 @@
+apiVersion: v1
+type: application
+name: k8s-aws-operator
+version: 0.0.0-placeholder
+appVersion: v0.0.0-placeholder
+description: Operator for managing ENIs and EIPs in AWS from within Kubernetes
+home: https://github.com/goto-opensource/k8s-aws-operator
+maintainers:
+- name: Alfred Krohmer
+  email: alfred.krohmer@goto.com
+  url: https://github.com/alfredkrohmer

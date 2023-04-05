@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"flag"
 	"os"
 
@@ -60,11 +59,6 @@ func main() {
 
 	awsConfig := aws.NewConfig()
 
-	if leaderElectionNamespace == "" {
-		setupLog.Error(errors.New("-leader-election-namespace flag is required"), "command line flag validation failed")
-		os.Exit(1)
-	}
-
 	if region != "" {
 		awsConfig = awsConfig.WithRegion(region)
 	}
@@ -79,7 +73,7 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      metricsAddr,
-		LeaderElection:          true,
+		LeaderElection:          leaderElectionNamespace != "" && leaderElectionID != "",
 		LeaderElectionNamespace: leaderElectionNamespace,
 		LeaderElectionID:        leaderElectionID,
 	})

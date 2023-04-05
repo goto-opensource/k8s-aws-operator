@@ -1,0 +1,16 @@
+{{- if .Values.metrics.serviceMonitor.enable }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+  endpoints:
+  {{- with .Values.metrics.serviceMonitor.endpoints }}
+  {{ . | toYaml | nindent 2 }}
+  {{- end}}
+{{- end }}
