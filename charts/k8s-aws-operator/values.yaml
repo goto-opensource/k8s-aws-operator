@@ -1,0 +1,34 @@
+image:
+  registry: ghcr.io
+  repository: goto-opensource/k8s-aws-operator
+  tag: # coming from appVersion
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 300Mi
+  limits:
+    memory: 300Mi
+
+aws:
+  region:
+
+serviceAccount:
+  annotations: {}
+
+replicas: 1
+leaderElection:
+  enabled: false
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    endpoints:
+    - port: metrics
+  service:
+    clusterIP:

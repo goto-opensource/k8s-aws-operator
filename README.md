@@ -2,8 +2,6 @@
 
 Manage AWS Elastic IPs (EIPs) and Elastic Network Interfaces (ENIs) as Custom Resources in your Kubernetes cluster and assign them your pods.
 
-**Warning:** This project is still work in progress. There might be breaking API changes in the future. Use at your own risk.
-
 ## Requirements
 
 * Your pod IPs must be allocated from your VPC subnets. This is the default setup on AWS EKS by using the [AWS VPC CNI plugin](https://github.com/aws/amazon-vpc-cni-k8s).
@@ -18,12 +16,13 @@ Create an IAM role with the policy [here](iam/policy.json).
 
 ### Install the operator
 
-Ensure that the k8s-aws-operator uses this role, e.g. using [»IAM Roles for Service Accounts« (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) or [kube2iam](https://github.com/jtblin/kube2iam)/[kiam](https://github.com/uswitch/kiam). Modify the manifests [here](deploy) accordingly, then run:
+Run:
 
 ```bash
-$ kubectl apply -f config/crd/bases/ # install Custom Resource Definition (CRD) for EIP Custom Resource
-$ kubectl apply -f deploy/          # install the operator
+$ helm install --namespace kube-system --set aws.region=us-east-1 oci://ghcr.io/goto-opensource/k8s-aws-operator --version v1.0.0 # adjust version
 ```
+
+If you want to use [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html), add the required trust relationship with your cluster to the IAM role and add the corresponding annotation on the service account (e.g. by setting the Helm value `serviceAccount.annotations."eks.amazonaws.com/role-arn"` accordingly).
 
 ## Usage
 
