@@ -127,7 +127,7 @@ Unassigning and releasing can also be done in one step.
 
 ##### EIP creation
 
-You can use an `initContainer` as part of your pod definition to create the `EIP` custom resource. This requires that your pod has RBAC permissions to create `EIP` resources.
+You can use an `initContainer` as part of your pod definition to create the `EIP` or `EIPAssociation` custom resource. This requires that your pod has RBAC permissions to create `EIP`/ `EIPAssociation`resources.
 
 ```yaml
 apiVersion: v1
@@ -143,7 +143,7 @@ rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
-  - eips
+  - eips, eipassociations
   verbs:
   - '*'
 ---
