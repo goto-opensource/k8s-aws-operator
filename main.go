@@ -100,6 +100,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ENI")
 		os.Exit(1)
 	}
+	err = (&controllers.EIPAssociationReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("EIPAssociation"),
+	}).SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "EIPAssociation")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
