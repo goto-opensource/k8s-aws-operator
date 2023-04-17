@@ -36,5 +36,5 @@ type EIPAssociationList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&EIP{}, &EIPAssociationList{})
+	SchemeBuilder.Register(&EIPAssociation{}, &EIPAssociationList{})
 }
