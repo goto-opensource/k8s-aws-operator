@@ -36,28 +36,47 @@ type EIPAssociationReconciler struct {
 func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("eipAssociation", req.NamespacedName)
 
+	log.Info("EIPAssociation Reconciling")
+
 	var eipAssociation awsv1alpha1.EIPAssociation
 	if err := r.Get(ctx, req.NamespacedName, &eipAssociation); err != nil {
+		log.Info("EIPAssociation wasn't found")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if !eipAssociation.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info("Deleting")
 		// Association is being deleted we want to unassign EIP
-		eips := &awsv1alpha1.EIPList{}
-		if err := r.List(ctx, eips); err != nil {
-			return ctrl.Result{}, err
-		}
+		if containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
+			eips := &awsv1alpha1.EIPList{}
+			if err := r.List(ctx, eips); err != nil {
+				log.Info("No EIPs found")
+				return ctrl.Result{}, err
+			}
 
-		for _, eip := range eips.Items {
-			if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.PodName && eip.Name == eipAssociation.EIPName {
-				eip.Status.State = "unassigning"
-				log.Info("EIPAssociation deleted will unassign corresponding EIP", eip.Name)
-				return ctrl.Result{}, r.Update(ctx, &eip)
+			for _, eip := range eips.Items {
+				if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.Spec.PodName && eip.Name == eipAssociation.Spec.EIPName {
+					log.Info("Unassigning corresponding EIP")
+					eip.Status.Assignment = nil
+					eip.Spec.Assignment = nil
+					r.Update(ctx, &eip)
+
+					eipAssociation.ObjectMeta.Finalizers = removeString(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+					return ctrl.Result{}, r.Update(ctx, &eipAssociation)
+				}
 			}
 		}
+	} else {
+		log.Info("New")
+		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
+			// add finalizer
+			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
+		}
+		return ctrl.Result{}, nil
 	}
 
-	log.Info("No EIP found for the corresponding EIPAssociation", eipAssociation.Name, eipAssociation.EIPName)
+	log.Info("No EIP found for the corresponding EIPAssociation")
 
 	return ctrl.Result{}, nil
 }

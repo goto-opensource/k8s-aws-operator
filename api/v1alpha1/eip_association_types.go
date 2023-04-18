@@ -19,13 +19,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type EIPAssociationSpec struct {
+	PodName string `json:"podName,omitempty"`
+	EIPName string `json:"eipName,omitempty"`
+}
+
 // +kubebuilder:object:root=true
+// +kubebuilder:printcolumn:name="Pod Name",type=string,JSONPath=`.spec.podName`
+// +kubebuilder:printcolumn:name="EIP Name",type=string,JSONPath=`.spec.eipName`
 type EIPAssociation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	PodName string `json:"PodName,omitempty"`
-	EIPName string `json:"EIPName,omitempty"`
+	Spec EIPAssociationSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true

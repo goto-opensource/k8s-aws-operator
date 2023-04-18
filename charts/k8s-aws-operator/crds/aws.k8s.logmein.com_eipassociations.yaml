@@ -15,14 +15,17 @@ spec:
     singular: eipassociation
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.podName
+      name: Pod Name
+      type: string
+    - jsonPath: .spec.eipName
+      name: EIP Name
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
-          EIPName:
-            type: string
-          PodName:
-            type: string
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
               of an object. Servers should convert recognized schemas to the latest
@@ -35,6 +38,14 @@ spec:
             type: string
           metadata:
             type: object
+          spec:
+            properties:
+              eipName:
+                type: string
+              podName:
+                type: string
+            type: object
         type: object
     served: true
     storage: true
+    subresources: {}
