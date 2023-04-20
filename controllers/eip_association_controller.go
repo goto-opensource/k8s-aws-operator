@@ -36,11 +36,8 @@ type EIPAssociationReconciler struct {
 func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("eipAssociation", req.NamespacedName)
 
-	log.Info("EIPAssociation Reconciling")
-
 	var eipAssociation awsv1alpha1.EIPAssociation
 	if err := r.Get(ctx, req.NamespacedName, &eipAssociation); err != nil {
-		log.Info("EIPAssociation wasn't found")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -60,23 +57,18 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					eip.Status.Assignment = nil
 					eip.Spec.Assignment = nil
 					r.Update(ctx, &eip)
-
-					eipAssociation.ObjectMeta.Finalizers = removeString(eipAssociation.ObjectMeta.Finalizers, finalizerName)
-					return ctrl.Result{}, r.Update(ctx, &eipAssociation)
 				}
 			}
+			eipAssociation.ObjectMeta.Finalizers = removeString(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
 		}
 	} else {
 		log.Info("New")
 		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
-			// add finalizer
 			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
 			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
 		}
-		return ctrl.Result{}, nil
 	}
-
-	log.Info("No EIP found for the corresponding EIPAssociation")
 
 	return ctrl.Result{}, nil
 }
