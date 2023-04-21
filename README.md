@@ -143,7 +143,8 @@ rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
-  - eips, eipassociations
+  - eips
+  - eipassociations
   verbs:
   - '*'
 ---

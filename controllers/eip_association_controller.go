@@ -41,31 +41,32 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !eipAssociation.ObjectMeta.DeletionTimestamp.IsZero() {
-		log.Info("Deleting")
+	if eipAssociation.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info("New")
+		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
+			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
+		}
+	} else {
 		// Association is being deleted we want to unassign EIP
+		log.Info("Deleting")
 		if containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
 			eips := &awsv1alpha1.EIPList{}
 			if err := r.List(ctx, eips); err != nil {
 				log.Info("No EIPs found")
 				return ctrl.Result{}, err
 			}
-
 			for _, eip := range eips.Items {
 				if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.Spec.PodName && eip.Name == eipAssociation.Spec.EIPName {
 					log.Info("Unassigning corresponding EIP")
 					eip.Status.Assignment = nil
 					eip.Spec.Assignment = nil
-					r.Update(ctx, &eip)
+					if err := r.Update(ctx, &eip); err != nil {
+						return ctrl.Result{}, err
+					}
 				}
 			}
 			eipAssociation.ObjectMeta.Finalizers = removeString(eipAssociation.ObjectMeta.Finalizers, finalizerName)
-			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
-		}
-	} else {
-		log.Info("New")
-		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
-			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
 			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
 		}
 	}
