@@ -51,19 +51,20 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Association is being deleted we want to unassign EIP
 		log.Info("Deleting")
 		if containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
-			eips := &awsv1alpha1.EIPList{}
-			if err := r.List(ctx, eips); err != nil {
-				log.Info("No EIPs found")
+			var eip awsv1alpha1.EIP
+			if err := r.Client.Get(ctx, client.ObjectKey{
+				Namespace: req.Namespace,
+				Name:      eipAssociation.Spec.EIPName,
+			}, &eip); err != nil {
 				return ctrl.Result{}, err
 			}
-			for _, eip := range eips.Items {
-				if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.Spec.PodName && eip.Name == eipAssociation.Spec.EIPName {
-					log.Info("Unassigning corresponding EIP")
-					eip.Status.Assignment = nil
-					eip.Spec.Assignment = nil
-					if err := r.Update(ctx, &eip); err != nil {
-						return ctrl.Result{}, err
-					}
+
+			if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.Spec.PodName {
+				log.Info("Unassigning corresponding EIP")
+				eip.Status.Assignment = nil
+				eip.Spec.Assignment = nil
+				if err := r.Update(ctx, &eip); err != nil {
+					return ctrl.Result{}, err
 				}
 			}
 			eipAssociation.ObjectMeta.Finalizers = removeString(eipAssociation.ObjectMeta.Finalizers, finalizerName)
