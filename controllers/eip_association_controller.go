@@ -41,14 +41,28 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if eipAssociation.ObjectMeta.DeletionTimestamp.IsZero() {
-		log.Info("New")
 		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
 			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+			var eip awsv1alpha1.EIP
+			if err := r.Client.Get(ctx, client.ObjectKey{
+				Namespace: req.Namespace,
+				Name:      eipAssociation.Spec.EIPName,
+			}, &eip); err != nil {
+				return ctrl.Result{}, err
+			}
+			if eip.Status.State == "allocated" {
+				eip.Spec.Assignment = &awsv1alpha1.EIPAssignment{
+					PodName: eipAssociation.Spec.PodName,
+				}
+			}
+			if err := r.Update(ctx, &eip); err != nil {
+				return ctrl.Result{}, err
+			}
+
 			return ctrl.Result{}, r.Update(ctx, &eipAssociation)
 		}
 	} else {
 		// Association is being deleted we want to unassign EIP
-		log.Info("Deleting")
 		if containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
 			var eip awsv1alpha1.EIP
 			if err := r.Client.Get(ctx, client.ObjectKey{
