@@ -31,7 +31,6 @@ type EIPAssociationReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eipassociations,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eipassociations/status,verbs=get;update;patch
 
 func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("eipAssociation", req.NamespacedName)
