@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	awsv1alpha1 "github.com/logmein/k8s-aws-operator/api/v1alpha1"
@@ -54,7 +55,10 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				eip.Spec.Assignment = &awsv1alpha1.EIPAssignment{
 					PodName: eipAssociation.Spec.PodName,
 				}
+			} else {
+				return ctrl.Result{}, fmt.Errorf("Cannot assign EIP because it isn't in allocated state.")
 			}
+
 			if err := r.Update(ctx, &eip); err != nil {
 				return ctrl.Result{}, err
 			}
