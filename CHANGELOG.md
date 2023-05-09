@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.0.0...v1.0.1) (2023-05-09)
+
+
+### Bug Fixes
+
+* use newer buildx in workflows to get correct image digest for Helm chart app version ([#17](https://github.com/goto-opensource/k8s-aws-operator/issues/17)) ([d0e5acb](https://github.com/goto-opensource/k8s-aws-operator/commit/d0e5acb492c873603486f92ded4fc7ef4b2a811d))
+
 ## [1.0.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v0.0.5...v1.0.0) (2023-04-05)
 
 
