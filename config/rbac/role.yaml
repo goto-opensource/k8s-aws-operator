@@ -20,14 +20,6 @@ rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
-  - eipassociations/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - aws.k8s.logmein.com
-  resources:
   - eips
   verbs:
   - create

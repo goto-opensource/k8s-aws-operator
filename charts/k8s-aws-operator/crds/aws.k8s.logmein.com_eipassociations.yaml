@@ -16,7 +16,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.podName
+    - jsonPath: .spec.assignment.podName
       name: Pod Name
       type: string
     - jsonPath: .spec.eipName
@@ -40,9 +40,19 @@ spec:
             type: object
           spec:
             properties:
+              assignment:
+                properties:
+                  eni:
+                    type: string
+                  eniPrivateIPAddressIndex:
+                    type: integer
+                  podName:
+                    minLength: 0
+                    type: string
+                  privateIPAddress:
+                    type: string
+                type: object
               eipName:
-                type: string
-              podName:
                 type: string
             type: object
         type: object

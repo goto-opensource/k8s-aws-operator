@@ -20,12 +20,12 @@ import (
 )
 
 type EIPAssociationSpec struct {
-	PodName string `json:"podName,omitempty"`
-	EIPName string `json:"eipName,omitempty"`
+	Assignment *EIPAssignment `json:"assignment,omitempty"`
+	EIPName    string         `json:"eipName,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:printcolumn:name="Pod Name",type=string,JSONPath=`.spec.podName`
+// +kubebuilder:printcolumn:name="Pod Name",type=string,JSONPath=`.spec.assignment.podName`
 // +kubebuilder:printcolumn:name="EIP Name",type=string,JSONPath=`.spec.eipName`
 type EIPAssociation struct {
 	metav1.TypeMeta   `json:",inline"`

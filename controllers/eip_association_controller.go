@@ -44,6 +44,7 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if eipAssociation.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !containsString(eipAssociation.ObjectMeta.Finalizers, finalizerName) {
 			eipAssociation.ObjectMeta.Finalizers = append(eipAssociation.ObjectMeta.Finalizers, finalizerName)
+			log.Info("New EIP Association")
 			var eip awsv1alpha1.EIP
 			if err := r.Client.Get(ctx, client.ObjectKey{
 				Namespace: req.Namespace,
@@ -51,10 +52,9 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}, &eip); err != nil {
 				return ctrl.Result{}, err
 			}
-			if eip.Status.State == "allocated" {
-				eip.Spec.Assignment = &awsv1alpha1.EIPAssignment{
-					PodName: eipAssociation.Spec.PodName,
-				}
+
+			if eip.Spec.Assignment == nil && eip.Status.State == "allocated" {
+				eip.Spec.Assignment = eipAssociation.Spec.Assignment
 			} else {
 				return ctrl.Result{}, fmt.Errorf("Cannot assign EIP because it isn't in allocated state.")
 			}
@@ -76,9 +76,8 @@ func (r *EIPAssociationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				return ctrl.Result{}, err
 			}
 
-			if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == eipAssociation.Spec.PodName {
+			if eip.Status.Assignment != nil && (eip.Status.Assignment.PodName == eipAssociation.Spec.Assignment.PodName || eip.Status.Assignment.ENI == eipAssociation.Spec.Assignment.ENI) {
 				log.Info("Unassigning corresponding EIP")
-				eip.Status.Assignment = nil
 				eip.Spec.Assignment = nil
 				if err := r.Update(ctx, &eip); err != nil {
 					return ctrl.Result{}, err
