@@ -127,7 +127,7 @@ Unassigning and releasing can also be done in one step.
 
 ##### EIP creation
 
-You can use an `initContainer` as part of your pod definition to create the `EIP` or `EIPAssociation` custom resource. This requires that your pod has RBAC permissions to create `EIP`/ `EIPAssociation`resources.
+You can use an `initContainer` as part of your pod definition to create the `EIP` or `EIPAssociation` custom resource. This requires that your pod has RBAC permissions to create `EIP`/ `EIPAssociation` resources.
 
 ```yaml
 apiVersion: v1
@@ -226,6 +226,26 @@ metadata:
 spec:
   tags:
     owner: My team
+  assignment:
+    podName: some-pod
+```
+
+##### EIPAssociation
+Here is an example of how to create an EIPAssociation to have a static EIP assigned/unassigned to a pod.
+
+```yaml
+apiVersion: aws.k8s.logmein.com/v1alpha1
+kind: EIPAssociation
+metadata:
+  name: my-eip-association
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: some-pod
+    uid: ... # put the UID of the pod here
+    blockOwnerDeletion: true
+spec:
+  eipName: eip-name
   assignment:
     podName: some-pod
 ```
