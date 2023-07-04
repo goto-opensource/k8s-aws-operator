@@ -8,6 +8,18 @@ rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
+  - eipassociations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - aws.k8s.logmein.com
+  resources:
   - eips
   verbs:
   - create
