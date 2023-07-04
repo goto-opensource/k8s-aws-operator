@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.0.1...v1.1.0) (2023-07-04)
+
+
+### Features
+
+* adding EIPAssociation CRD and controller to allow static EIP unassignment ([#16](https://github.com/goto-opensource/k8s-aws-operator/issues/16)) ([4ffd565](https://github.com/goto-opensource/k8s-aws-operator/commit/4ffd565aa5f834b59de5f80aca9db9a492eecac8))
+
 ## [1.0.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.0.0...v1.0.1) (2023-05-09)
 
 
