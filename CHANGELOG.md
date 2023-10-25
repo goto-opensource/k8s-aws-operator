@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.1.0...v1.1.1) (2023-10-25)
+
+
+### Bug Fixes
+
+* **chart:** indention of pod scheduling configurations ([72ea0df](https://github.com/goto-opensource/k8s-aws-operator/commit/72ea0dff373c191249719d6cc95cf0d35386dc90))
+
 ## [1.1.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.0.1...v1.1.0) (2023-07-04)
 
 
