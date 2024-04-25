@@ -1,10 +1,10 @@
-{{- if .Values.metrics.serviceMonitor.enable }}
+{{- if .Values.metrics.serviceMonitor.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Chart.Name }}-metrics
+  name: {{ include "k8s-aws-operator.fullname" . }}-metrics
   labels:
-    app.kubernetes.io/name: {{ .Chart.Name }}
+    {{- include "k8s-aws-operator.labels" . | nindent 4 }}
 spec:
   {{- with .Values.metrics.service.clusterIP }}
   clusterIP: {{ . | quote }}
@@ -15,5 +15,5 @@ spec:
     protocol: TCP
     targetPort: 8080
   selector:
-    app.kubernetes.io/name: {{ .Chart.Name }}
+    {{- include "k8s-aws-operator.selectorLabels" . | nindent 4 }}
 {{- end }}
