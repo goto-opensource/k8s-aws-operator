@@ -1,3 +1,10 @@
+## [1.2.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.1.1...v1.2.0) (2024-04-30)
+
+
+### Features
+
+* add recommended labels to the Helm Chart ([#18](https://github.com/goto-opensource/k8s-aws-operator/issues/18)) ([17e1f37](https://github.com/goto-opensource/k8s-aws-operator/commit/17e1f37025385926c12f1ba6566e02b986ffe1be))
+
 ## [1.1.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.1.0...v1.1.1) (2023-10-25)
 
 
