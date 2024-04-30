@@ -2,13 +2,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ .Chart.Name }}
+  name: {{ include "k8s-aws-operator.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ .Chart.Name }}
+    {{- include "k8s-aws-operator.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ .Chart.Name }}
+      {{- include "k8s-aws-operator.selectorLabels" . | nindent 6 }}
   endpoints:
   {{- with .Values.metrics.serviceMonitor.endpoints }}
   {{ . | toYaml | nindent 2 }}
