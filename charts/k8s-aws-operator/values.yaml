@@ -3,6 +3,8 @@ image:
   repository: goto-opensource/k8s-aws-operator
   tag: # coming from appVersion
 
+# deploymentAnnotations: {}
+
 resources:
   requests:
     cpu: 20m
