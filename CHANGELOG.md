@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.0...v1.2.1) (2024-07-01)
+
+
+### Bug Fixes
+
+* use non-caching client to get pod in `getPodPrivateIP` in ENI controller ([#21](https://github.com/goto-opensource/k8s-aws-operator/issues/21)) ([317b48e](https://github.com/goto-opensource/k8s-aws-operator/commit/317b48e32416db3115bbc10a0b8c8cb27ca1412d))
+
 ## [1.2.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.1.1...v1.2.0) (2024-04-30)
 
 
