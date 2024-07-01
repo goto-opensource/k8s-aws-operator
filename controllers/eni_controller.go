@@ -38,8 +38,9 @@ import (
 // ENIReconciler reconciles a ENI object
 type ENIReconciler struct {
 	client.Client
-	Log logr.Logger
-	EC2 *ec2.EC2
+	NonCachingClient client.Client
+	Log              logr.Logger
+	EC2              *ec2.EC2
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis,verbs=get;list;watch;create;update;patch;delete
@@ -278,7 +279,8 @@ func (r *ENIReconciler) getSecurityGroupIDs(securityGroups []string) ([]*string,
 
 func (r *ENIReconciler) getPodPrivateIP(namespace, podName string) (string, error) {
 	pod := &corev1.Pod{}
-	if err := r.Client.Get(context.Background(), client.ObjectKey{
+	// we use a non-caching client here as otherwise we would need to cache all pods (would increase memory usage) in the cluster and require list/watch permissions
+	if err := r.NonCachingClient.Get(context.Background(), client.ObjectKey{
 		Namespace: namespace,
 		Name:      podName,
 	}, pod); err != nil {
@@ -291,7 +293,7 @@ func (r *ENIReconciler) getPodPrivateIP(namespace, podName string) (string, erro
 func (r *ENIReconciler) findENI(privateIP string) (*ec2.NetworkInterface, error) {
 	if resp, err := r.EC2.DescribeNetworkInterfaces(&ec2.DescribeNetworkInterfacesInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name: aws.String("addresses.private-ip-address"),
 				Values: []*string{
 					aws.String(privateIP),

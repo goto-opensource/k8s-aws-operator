@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
@@ -82,8 +83,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	cachingClient := mgr.GetClient()
+	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		setupLog.Error(err, "unable to get non-caching client")
+		os.Exit(1)
+	}
+
 	err = (&controllers.EIPReconciler{
-		Client: mgr.GetClient(),
+		Client: cachingClient,
 		Log:    ctrl.Log.WithName("controllers").WithName("EIP"),
 		EC2:    ec2,
 	}).SetupWithManager(mgr)
@@ -92,9 +100,10 @@ func main() {
 		os.Exit(1)
 	}
 	err = (&controllers.ENIReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ENI"),
-		EC2:    ec2,
+		Client:           cachingClient,
+		NonCachingClient: nonCachingClient,
+		Log:              ctrl.Log.WithName("controllers").WithName("ENI"),
+		EC2:              ec2,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ENI")
