@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.1...v1.2.2) (2024-08-19)
+
+
+### Bug Fixes
+
+* use non-caching client to get pod in `getPodPrivateIP` also in EIP controller ([#22](https://github.com/goto-opensource/k8s-aws-operator/issues/22)) ([9db1162](https://github.com/goto-opensource/k8s-aws-operator/commit/9db1162d5aa34dcbbdc96fdad8572ea2cdf30170))
+
 ## [1.2.1](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.0...v1.2.1) (2024-07-01)
 
 
