@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.2...v1.2.3) (2024-08-19)
+
+
+### Bug Fixes
+
+* strip digest from image tag in version label in Helm chart ([#23](https://github.com/goto-opensource/k8s-aws-operator/issues/23)) ([b6a9fa0](https://github.com/goto-opensource/k8s-aws-operator/commit/b6a9fa085b794271864dd26a81c2ef7e48393d47))
+
 ## [1.2.2](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.1...v1.2.2) (2024-08-19)
 
 
