@@ -37,8 +37,9 @@ import (
 // EIPReconciler reconciles a EIP object
 type EIPReconciler struct {
 	client.Client
-	Log logr.Logger
-	EC2 *ec2.EC2
+	NonCachingClient client.Client
+	Log              logr.Logger
+	EC2              *ec2.EC2
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips,verbs=get;list;watch;create;update;patch;delete
@@ -270,7 +271,7 @@ func (r *EIPReconciler) releaseEIP(ctx context.Context, eip *awsv1alpha1.EIP, lo
 
 func (r *EIPReconciler) getPodPrivateIP(ctx context.Context, namespace, podName string) (string, error) {
 	pod := &corev1.Pod{}
-	if err := r.Client.Get(ctx, client.ObjectKey{
+	if err := r.NonCachingClient.Get(ctx, client.ObjectKey{
 		Namespace: namespace,
 		Name:      podName,
 	}, pod); err != nil {
