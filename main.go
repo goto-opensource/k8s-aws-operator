@@ -91,9 +91,10 @@ func main() {
 	}
 
 	err = (&controllers.EIPReconciler{
-		Client: cachingClient,
-		Log:    ctrl.Log.WithName("controllers").WithName("EIP"),
-		EC2:    ec2,
+		Client:           cachingClient,
+		NonCachingClient: nonCachingClient,
+		Log:              ctrl.Log.WithName("controllers").WithName("EIP"),
+		EC2:              ec2,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EIP")
