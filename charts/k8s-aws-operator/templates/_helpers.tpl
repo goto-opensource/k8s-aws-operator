@@ -37,7 +37,7 @@ Common labels
 helm.sh/chart: {{ include "k8s-aws-operator.chart" . }}
 {{ include "k8s-aws-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ default .Chart.AppVersion .Values.image.tag | quote }}
+app.kubernetes.io/version: {{ regexReplaceAll "@sha256:[a-z0-9]+$" (.Values.image.tag | default .Chart.AppVersion) "" | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/instance: {{ .Release.Name }}
