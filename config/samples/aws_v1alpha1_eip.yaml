@@ -3,7 +3,7 @@ kind: EIP
 metadata:
   name: eip-sample
 spec:
-  tags:
+  tags:             # Optional tags to apply to the EIP
     owner: Myself
   assignment:
     eni: eni-sample

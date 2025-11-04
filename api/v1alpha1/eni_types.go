@@ -37,6 +37,10 @@ type ENISpec struct {
 	Attachment *ENIAttachment `json:"attachment,omitempty"`
 
 	Description string `json:"description,omitempty"`
+
+	// Tags that will be applied to the created EIP.
+	// +optional
+	Tags *map[string]string `json:"tags,omitempty"`
 }
 
 // ENIStatus defines the observed state of ENI

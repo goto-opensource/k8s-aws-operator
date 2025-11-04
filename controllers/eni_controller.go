@@ -41,6 +41,7 @@ type ENIReconciler struct {
 	NonCachingClient client.Client
 	Log              logr.Logger
 	EC2              *ec2.EC2
+	Tags             map[string]string
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis,verbs=get;list;watch;create;update;patch;delete
@@ -74,6 +75,13 @@ func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			if eni.Spec.SecondaryPrivateIPAddressCount > 0 {
 				input.SecondaryPrivateIpAddressCount = aws.Int64(eni.Spec.SecondaryPrivateIPAddressCount)
 			}
+
+			tags := ec2.TagSpecification{
+				ResourceType: aws.String("network-interface"),
+			}
+			tags.Tags = convertMapToTags(r.Tags)
+			input.TagSpecifications = []*ec2.TagSpecification{&tags}
+
 			resp, err := r.EC2.CreateNetworkInterface(input)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -200,6 +208,12 @@ func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				return ctrl.Result{RequeueAfter: 3 * time.Second}, err
 			}
 		}
+
+		// reconcile tags
+		if err := r.reconcileTags(ctx, &eni, eniInfo.TagSet); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		eni.Status.Attachment = eni.Spec.Attachment
 		return ctrl.Result{}, r.Update(ctx, &eni)
 	} else if containsString(eni.ObjectMeta.Finalizers, finalizerName) {
@@ -355,4 +369,60 @@ func (r *ENIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&awsv1alpha1.ENI{}).
 		Complete(r)
+}
+
+// combineDefaultAndDefinedTags combines the default tags defined in the controller
+// with the tags defined in the ENI spec. Tags defined in the ENI spec override
+// default tags in case of key conflicts.
+func (r ENIReconciler) combineDefaultAndDefinedTags(eni *awsv1alpha1.ENI) []*ec2.Tag {
+	var tags []*ec2.Tag
+	tags = convertMapToTags(r.Tags)
+	tags = append(tags, convertMapToTags(*eni.Spec.Tags)...)
+	return tags
+}
+
+func (r *ENIReconciler) reconcileTags(ctx context.Context, eni *awsv1alpha1.ENI, existingTags []*ec2.Tag) error {
+	resources := []*string{aws.String(eni.Status.NetworkInterfaceID)}
+
+	// create tags that are defined in the spec but not present yet
+	var tagsToCreate []*ec2.Tag
+	for k, v := range *eni.Spec.Tags {
+		create := true
+		for _, tag := range existingTags {
+			if aws.StringValue(tag.Key) == k && aws.StringValue(tag.Value) == v {
+				create = false
+				break
+			}
+		}
+		if create {
+			tagsToCreate = append(tagsToCreate, &ec2.Tag{Key: aws.String(k), Value: aws.String(v)})
+		}
+	}
+
+	if len(tagsToCreate) > 0 {
+		if _, err := r.EC2.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
+			Resources: resources,
+			Tags:      tagsToCreate,
+		}); err != nil {
+			return err
+		}
+	}
+
+	// remove tags that are not defined in the spec and are not default ones
+	var tagsToRemove []*ec2.Tag
+	for _, tag := range existingTags {
+		if !isTagPresent(r.combineDefaultAndDefinedTags(eni), tag) {
+			tagsToRemove = append(tagsToRemove, tag)
+		}
+	}
+
+	if len(tagsToRemove) > 0 {
+		_, err := r.EC2.DeleteTagsWithContext(ctx, &ec2.DeleteTagsInput{
+			Resources: resources,
+			Tags:      tagsToRemove,
+		})
+		return err
+	}
+
+	return nil
 }

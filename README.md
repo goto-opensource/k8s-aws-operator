@@ -250,6 +250,9 @@ spec:
     podName: some-pod
 ```
 
+##### Default tags
+Tags can be defined from CLI as default tags, what will be applied to EIP and ENI resources.
+
 ### ENIs
 
 To be documented

@@ -8,3 +8,5 @@ spec:
   secondaryPrivateIPAddressCount: 2
   securityGroups:
   - sg-abcdef12
+  tags:           # Optional tags to apply to the ENI
+    team: VCS
