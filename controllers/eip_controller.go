@@ -40,6 +40,7 @@ type EIPReconciler struct {
 	NonCachingClient client.Client
 	Log              logr.Logger
 	EC2              *ec2.EC2
+	Tags             map[string]string
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips,verbs=get;list;watch;create;update;patch;delete
@@ -189,6 +190,17 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 			input.PublicIpv4Pool = chosenPool.PoolId
 		}
 	}
+
+	tags := ec2.TagSpecification{
+		ResourceType: aws.String("elastic-ip"),
+	}
+	for k, v := range r.Tags {
+		tags.Tags = append(tags.Tags, &ec2.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+	input.TagSpecifications = []*ec2.TagSpecification{&tags}
 
 	if resp, err := r.EC2.AllocateAddressWithContext(ctx, input); err != nil {
 		return err

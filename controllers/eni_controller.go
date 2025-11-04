@@ -41,6 +41,7 @@ type ENIReconciler struct {
 	NonCachingClient client.Client
 	Log              logr.Logger
 	EC2              *ec2.EC2
+	Tags             map[string]string
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=enis,verbs=get;list;watch;create;update;patch;delete
@@ -74,6 +75,18 @@ func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			if eni.Spec.SecondaryPrivateIPAddressCount > 0 {
 				input.SecondaryPrivateIpAddressCount = aws.Int64(eni.Spec.SecondaryPrivateIPAddressCount)
 			}
+
+			tags := ec2.TagSpecification{
+				ResourceType: aws.String("elastic-ip"),
+			}
+			for k, v := range r.Tags {
+				tags.Tags = append(tags.Tags, &ec2.Tag{
+					Key:   aws.String(k),
+					Value: aws.String(v),
+				})
+			}
+			input.TagSpecifications = []*ec2.TagSpecification{&tags}
+
 			resp, err := r.EC2.CreateNetworkInterface(input)
 			if err != nil {
 				return ctrl.Result{}, err
