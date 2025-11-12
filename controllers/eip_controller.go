@@ -218,7 +218,9 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 func (r EIPReconciler) combineDefaultAndDefinedTags(eip *awsv1alpha1.EIP) []*ec2.Tag {
 	var tags []*ec2.Tag
 	tags = convertMapToTags(r.Tags)
-	tags = append(tags, convertMapToTags(*eip.Spec.Tags)...)
+	if eip.Spec.Tags != nil {
+		tags = append(tags, convertMapToTags(*eip.Spec.Tags)...)
+	}
 	return tags
 }
 
@@ -230,7 +232,9 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 	resources := []*string{aws.String(eip.Status.AllocationId)}
 
 	var tagsToCreate []*ec2.Tag
-	for k, v := range *eip.Spec.Tags {
+	for _, tag := range r.combineDefaultAndDefinedTags(eip) {
+		k := aws.StringValue(tag.Key)
+		v := aws.StringValue(tag.Value)
 		create := true
 		for _, tag := range existingTags {
 			if aws.StringValue(tag.Key) == k && aws.StringValue(tag.Value) == v {

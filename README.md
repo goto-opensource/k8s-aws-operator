@@ -256,3 +256,5 @@ Tags can be defined from CLI as default tags, what will be applied to EIP and EN
 ### ENIs
 
 To be documented
+
+ENI specification requires at least one tag. It could be default tag or specified in YAML.

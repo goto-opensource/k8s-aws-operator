@@ -175,6 +175,11 @@ func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, r.Update(ctx, &eni)
 		}
 
+		// reconcile tags
+		if err := r.reconcileTags(ctx, &eni, eniInfo.TagSet); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// reconcile pod attachment
 		if eni.Spec.Attachment == nil {
 			if eniInfo.Attachment == nil || aws.StringValue(eniInfo.Attachment.Status) != "attached" {
@@ -207,11 +212,6 @@ func (r *ENIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 				}
 				return ctrl.Result{RequeueAfter: 3 * time.Second}, err
 			}
-		}
-
-		// reconcile tags
-		if err := r.reconcileTags(ctx, &eni, eniInfo.TagSet); err != nil {
-			return ctrl.Result{}, err
 		}
 
 		eni.Status.Attachment = eni.Spec.Attachment
@@ -377,7 +377,9 @@ func (r *ENIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r ENIReconciler) combineDefaultAndDefinedTags(eni *awsv1alpha1.ENI) []*ec2.Tag {
 	var tags []*ec2.Tag
 	tags = convertMapToTags(r.Tags)
-	tags = append(tags, convertMapToTags(*eni.Spec.Tags)...)
+	if eni.Spec.Tags != nil {
+		tags = append(tags, convertMapToTags(*eni.Spec.Tags)...)
+	}
 	return tags
 }
 
@@ -386,7 +388,9 @@ func (r *ENIReconciler) reconcileTags(ctx context.Context, eni *awsv1alpha1.ENI,
 
 	// create tags that are defined in the spec but not present yet
 	var tagsToCreate []*ec2.Tag
-	for k, v := range *eni.Spec.Tags {
+	for _, tag := range r.combineDefaultAndDefinedTags(eni) {
+		k := aws.StringValue(tag.Key)
+		v := aws.StringValue(tag.Value)
 		create := true
 		for _, tag := range existingTags {
 			if aws.StringValue(tag.Key) == k && aws.StringValue(tag.Value) == v {

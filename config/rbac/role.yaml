@@ -2,44 +2,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role
 rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
   - eipassociations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aws.k8s.logmein.com
-  resources:
   - eips
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aws.k8s.logmein.com
-  resources:
-  - eips/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - aws.k8s.logmein.com
-  resources:
   - enis
   verbs:
   - create
@@ -52,6 +21,7 @@ rules:
 - apiGroups:
   - aws.k8s.logmein.com
   resources:
+  - eips/status
   - enis/status
   verbs:
   - get
