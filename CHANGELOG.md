@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.3.0...v1.4.0) (2025-11-26)
+
+
+### Features
+
+* Add default tags CLI option [K8SPCORE-1707] ([e9bd1f3](https://github.com/goto-opensource/k8s-aws-operator/commit/e9bd1f3215dce068ab790c3fd3eff4f8e4fc19a3))
+
 ## [1.3.0](https://github.com/goto-opensource/k8s-aws-operator/compare/v1.2.3...v1.3.0) (2024-08-20)
 
 
