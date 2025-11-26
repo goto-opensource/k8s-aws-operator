@@ -34,3 +34,7 @@ metrics:
     - port: metrics
   service:
     clusterIP:
+
+# additional arguments for operator deployment
+containerArgs: {}
+#  default-tags: test=test
