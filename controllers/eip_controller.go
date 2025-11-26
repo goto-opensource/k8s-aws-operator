@@ -40,6 +40,7 @@ type EIPReconciler struct {
 	NonCachingClient client.Client
 	Log              logr.Logger
 	EC2              *ec2.EC2
+	Tags             map[string]string
 }
 
 // +kubebuilder:rbac:groups=aws.k8s.logmein.com,resources=eips,verbs=get;list;watch;create;update;patch;delete
@@ -190,6 +191,12 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 		}
 	}
 
+	tags := ec2.TagSpecification{
+		ResourceType: aws.String("elastic-ip"),
+		Tags:         r.combineDefaultAndDefinedTags(eip),
+	}
+	input.TagSpecifications = []*ec2.TagSpecification{&tags}
+
 	if resp, err := r.EC2.AllocateAddressWithContext(ctx, input); err != nil {
 		return err
 	} else {
@@ -202,7 +209,19 @@ func (r *EIPReconciler) allocateEIP(ctx context.Context, eip *awsv1alpha1.EIP, l
 		}
 	}
 
-	return r.reconcileTags(ctx, eip, []*ec2.Tag{})
+	return nil
+}
+
+// combineDefaultAndDefinedTags combines the default tags defined in the controller
+// with the tags defined in the EIP spec. Tags defined in the EIP spec override
+// default tags in case of key conflicts.
+func (r EIPReconciler) combineDefaultAndDefinedTags(eip *awsv1alpha1.EIP) []*ec2.Tag {
+	var tags []*ec2.Tag
+	tags = convertMapToTags(r.Tags)
+	if eip.Spec.Tags != nil {
+		tags = append(tags, convertMapToTags(*eip.Spec.Tags)...)
+	}
+	return tags
 }
 
 func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP, existingTags []*ec2.Tag) error {
@@ -213,7 +232,9 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 	resources := []*string{aws.String(eip.Status.AllocationId)}
 
 	var tagsToCreate []*ec2.Tag
-	for k, v := range *eip.Spec.Tags {
+	for _, tag := range r.combineDefaultAndDefinedTags(eip) {
+		k := aws.StringValue(tag.Key)
+		v := aws.StringValue(tag.Value)
 		create := true
 		for _, tag := range existingTags {
 			if aws.StringValue(tag.Key) == k && aws.StringValue(tag.Value) == v {
@@ -225,6 +246,7 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 			tagsToCreate = append(tagsToCreate, &ec2.Tag{Key: aws.String(k), Value: aws.String(v)})
 		}
 	}
+
 	if len(tagsToCreate) > 0 {
 		if _, err := r.EC2.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
 			Resources: resources,
@@ -234,12 +256,14 @@ func (r *EIPReconciler) reconcileTags(ctx context.Context, eip *awsv1alpha1.EIP,
 		}
 	}
 
+	// remove tags that are not defined in the spec and are not default ones
 	var tagsToRemove []*ec2.Tag
 	for _, tag := range existingTags {
-		if _, ok := (*eip.Spec.Tags)[aws.StringValue(tag.Key)]; !ok {
+		if !isTagPresent(r.combineDefaultAndDefinedTags(eip), tag) {
 			tagsToRemove = append(tagsToRemove, tag)
 		}
 	}
+
 	if len(tagsToRemove) > 0 {
 		_, err := r.EC2.DeleteTagsWithContext(ctx, &ec2.DeleteTagsInput{
 			Resources: resources,

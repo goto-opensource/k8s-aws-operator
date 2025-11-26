@@ -250,6 +250,11 @@ spec:
     podName: some-pod
 ```
 
+##### Default tags
+Tags can be defined from CLI as default tags, what will be applied to EIP and ENI resources.
+
 ### ENIs
 
 To be documented
+
+ENI specification requires at least one tag. It could be default tag or specified in YAML.

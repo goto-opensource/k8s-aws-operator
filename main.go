@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -45,11 +46,12 @@ func init() {
 }
 
 func main() {
-	var metricsAddr, region, leaderElectionID, leaderElectionNamespace string
+	var metricsAddr, region, leaderElectionID, leaderElectionNamespace, defaultTags string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&region, "region", "", "AWS region")
 	flag.StringVar(&leaderElectionID, "leader-election-id", "k8s-aws-operator", "the name of the configmap do use as leader election lock")
 	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "", "the namespace in which the leader election lock will be held")
+	flag.StringVar(&defaultTags, "default-tags", "", "default tags to add to created resources, in the format key1=value1,key2=value2")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -90,11 +92,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	defaultTagsMap := make(map[string]string)
+	if defaultTags != "" {
+		parseTags(&defaultTagsMap, defaultTags)
+		setupLog.Info("Default tags set", "tags", defaultTagsMap)
+	}
+
 	err = (&controllers.EIPReconciler{
 		Client:           cachingClient,
 		NonCachingClient: nonCachingClient,
 		Log:              ctrl.Log.WithName("controllers").WithName("EIP"),
 		EC2:              ec2,
+		Tags:             defaultTagsMap,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EIP")
@@ -105,6 +114,7 @@ func main() {
 		NonCachingClient: nonCachingClient,
 		Log:              ctrl.Log.WithName("controllers").WithName("ENI"),
 		EC2:              ec2,
+		Tags:             defaultTagsMap,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ENI")
@@ -124,5 +134,14 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
+	}
+}
+
+func parseTags(tagMap *map[string]string, tags string) {
+	for _, tag := range strings.Split(tags, ",") {
+		kv := strings.SplitN(tag, "=", 2)
+		if len(kv) == 2 {
+			(*tagMap)[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
 	}
 }
