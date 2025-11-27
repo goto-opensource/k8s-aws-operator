@@ -37,6 +37,9 @@ spec:
         resources: {{ .Values.resources | toYaml | nindent 10 }}
         args:
         - -region={{ required "aws.region is required" .Values.aws.region }}
+        {{- range $key, $value := .Values.containerArgs }}
+        - -{{- $key }}={{ $value }}
+        {{- end }}
         {{- if or .Values.leaderElection.enabled (gt (.Values.replicas | int) 1) }}
         - -leader-election-namespace={{ .Release.Namespace }}
         {{- end }}
